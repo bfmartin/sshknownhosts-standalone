@@ -7,7 +7,7 @@ This project contains programs to configure the /etc/ssh/ssh_known_hosts file, o
 
 The concepts are the same as other projects of mine, the ansible-sshknownhosts and ansible-sshknownhosts-role, except these are standalone programs instead of plugin modules for the Ansible project.
 
-These scripts are intended to be used as part of a system configuration tool like Puppet, Chef, or another one. The scripts are idemotent, which means they can be run as often as required without side effects.
+These scripts are intended to be used as part of a system configuration tool like Puppet, Chef, and others. The scripts are idempotent, which means they can be run as often as required without side effects.
 
 There are currently two versions of the program, both in the bin directory. One is written in Python, the other in Perl. Both do exactly the same thing.
 
