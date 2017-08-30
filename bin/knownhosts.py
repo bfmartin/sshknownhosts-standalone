@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# knownhosts.pl
+# knownhosts.py
 #
 # maintain the /etc/ssh/ssh_known_hosts file by scanning hosts for
 # keys and adding entries to the file.
@@ -10,7 +10,7 @@
 # Byron F. Martin <https://www.bfmartin.ca/contact/>
 #
 # tested on:
-# - python 2.7 on Linux Mint 18.1
+# - python 2.7 on Linux Mint 18.1, 18.2
 # - python 2.7 on OpenBSD 6.1
 # - python 3.6 on OpenBSD 6.1
 # - python 2.7.13 on Cygwin
@@ -53,8 +53,8 @@ def scan_keys(host, scanfile, scanprog, opts):
 # args
 # - the hostname given to ssh-keyscan (from the command line)
 # - name of knownhosts file
-# - an array of aliases for the hostname (from the command line)
-# - an array of results from ssh-keyscan
+# - a list of aliases for the hostname (from the command line)
+# - a list of results from ssh-keyscan
 #
 # returns nothing
 def compare_known_hosts(host, file, aliases, scankeys):
@@ -82,10 +82,50 @@ def compare_known_hosts(host, file, aliases, scankeys):
     if changed == 0:
         return
 
-    f = open(file, 'w')
-    f.writelines("%s\n" % line for line in lines)
-    f.close
+    write_knownhosts_file(file, lines)
     return
+
+
+# removes a host for any type of key from the knownhosts file. the
+# supplied hostname can be the hostname in the knownhosts file, or an
+# alias of the hostname.
+#
+# args:
+# - the hostname to remove
+# - name of knownhosts file
+#
+# returns nothing
+def remove_host(host, file):
+    with open(file) as f:
+        lines = f.read().splitlines()
+        f.close()
+
+    newlines = [line for line in lines if comparehost(line, host)]
+    if (len(lines) == len(newlines)):
+        return
+
+    write_knownhosts_file(file, newlines)
+
+
+# does the hostname match the hostname or an alias from a line of the
+# knownhosts file?
+#
+# args:
+# - a line from the knownhosts file
+# - the hostname to match
+#
+# returns true or false.
+#
+# NOTE that the return value is backward from what you probably
+# expect. it returns true if the hostname is not found, and false if
+# the hostname is found. this is because of the logic of the 'for'
+# command above.
+def comparehost(line, host):
+    pline = split_line(line)
+    if pline['host'] == host or host in pline['aliases']:
+        return False
+    else:
+        return True
 
 
 # looks for hostname and encryption type and matches against
@@ -94,7 +134,7 @@ def compare_known_hosts(host, file, aliases, scankeys):
 # args:
 # - line from ssh-keyscan
 # - hostname that was scanned
-# - array of lines from known_hosts
+# - list of lines from knownhosts
 #
 # returns
 # - int index to the match, or -1 if no match found
@@ -144,6 +184,19 @@ def unsplit_line(line, host, aliases):
                     [pline['type']] + [pline['key']])
 
 
+# write a list of lines to the knownhosts file
+#
+# args:
+# - the filename
+# - a list of strings
+#
+# returns nothing
+def write_knownhosts_file(file, lines):
+    f = open(file, 'w')
+    f.writelines("%s\n" % line for line in lines)
+    f.close
+
+
 # start here
 
 parser = argparse.ArgumentParser(
@@ -164,8 +217,10 @@ parser.add_argument('-o', '--opts', type=str,
 parser.add_argument('-c', '--command', default='ssh-keyscan',
                     help='use this command to scan for keys. default: '
                     '%(default)s')
-parser.add_argument('-r', '--remove', help='remove all entries of this host '
-                    'from the ssh_known_hosts file. Not implemented yet')
+parser.add_argument('-r', '--remove', action="store_true", help='remove all '
+                    'entries/keytypes of this host from the ssh_known_hosts file.'
+                    ' if remove is selected, only the first hostname is processed.'
+                    ' other args are ignored.')
 
 parser.add_argument('host', type=str, help='the hostname to scan')
 parser.add_argument('aliases', nargs='*', default=[], help='aliases for host')
@@ -177,7 +232,10 @@ if not os.path.exists(args.file):
     with open(args.file, 'a'):
         os.utime(args.file, None)
 
-newkeys = scan_keys(args.host, args.SCANFILE, args.command, args.opts)
-compare_known_hosts(args.host, args.file, args.aliases, newkeys)
+if args.remove:
+    remove_host(args.host, args.file)
+else:
+    newkeys = scan_keys(args.host, args.SCANFILE, args.command, args.opts)
+    compare_known_hosts(args.host, args.file, args.aliases, newkeys)
 
 # end
