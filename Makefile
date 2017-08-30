@@ -12,6 +12,9 @@
 #  8 update host with removed aliases and new key
 #  9 update host and new many aliases and changed key (similar to 4)
 #  10 update host and new many aliases and same key (similar to 5)
+#  11 remove a host given the hostname
+#  12 remove a host given an alias
+#  13 remove a non-existant host, so nothing is added/removed
 #
 # not done yet:
 #  - remove host
@@ -33,7 +36,7 @@ testperl:
 	@cp bin/knownhosts.pl tmp/knownhosts
 	make runall
 
-runall: t1 t2 t3 t4 t5 t6 t7 t8 t9 t10
+runall: t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13
 	@rm -rf tmp
 
 t1:
@@ -95,3 +98,21 @@ t10:
 	cp tests/10/testknownhosts-start tmp/testknownhosts
 	(cd tmp && ./knownhosts $(OPTS) hostname123 aliasa aliasb aliasc)
 	diff tmp/testknownhosts tests/10/testknownhosts-result
+
+t11:
+	cp tests/11/testscan-start.txt tmp/testscan.txt
+	cp tests/11/testknownhosts-start tmp/testknownhosts
+	(cd tmp && ./knownhosts $(OPTS) -r hostname123)
+	diff tmp/testknownhosts tests/11/testknownhosts-result
+
+t12:
+	cp tests/12/testscan-start.txt tmp/testscan.txt
+	cp tests/12/testknownhosts-start tmp/testknownhosts
+	(cd tmp && ./knownhosts $(OPTS) -r alias1)
+	diff tmp/testknownhosts tests/12/testknownhosts-result
+
+t13:
+	cp tests/13/testscan-start.txt tmp/testscan.txt
+	cp tests/13/testknownhosts-start tmp/testknownhosts
+	(cd tmp && ./knownhosts $(OPTS) -r nonexistanthostname)
+	diff tmp/testknownhosts tests/13/testknownhosts-result
