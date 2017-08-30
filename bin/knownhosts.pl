@@ -10,7 +10,7 @@
 # Byron F. Martin <https://www.bfmartin.ca/contact/>
 #
 # tested on:
-# - perl 5.22.1 on Linux Mint 18.1
+# - perl 5.22.1 on Linux Mint 18.1, 18.2
 # - perl 5.24.1 on OpenBSD 6.1
 # - perl 5.22.4 on Cygwin
 
@@ -83,10 +83,54 @@ sub compare_known_hosts {
   }
 
   return if $changed == 0;
-  open my $hdle, '>', $file or croak "cant open $file for writing: $ERRNO";
-  print {$hdle} @lines or croak "cant print to $file: $ERRNO";
-  close $hdle or croak "can't close $file: $ERRNO";
+  write_knownhosts_file($file, @lines);
   return 0;
+}
+
+
+# removes a host for any type of key from the knownhosts file. the
+# supplied hostname can be the hostname in the knownhosts file, or an
+# alias of the hostname.
+#
+# args:
+# - the hostname to remove
+# - name of knownhosts file
+#
+# returns nothing
+sub remove_host {
+  my ($host, $file) = @_;
+
+  open my $handle, '<', $file or croak "cant open knownhosts file $file: $ERRNO";
+  my @lines = <$handle>;
+  close $handle or croak "cant close $file: $ERRNO";
+
+  my @new = grep { comparehost($_, $host) } @lines;
+
+  if ($#new != $#lines) {
+    write_knownhosts_file($file, @new);
+  }
+}
+
+
+# does the hostname match the hostname or an alias from a line of the
+# knownhosts file?
+#
+# args:
+# - a line from the knownhosts file
+# - the hostname to match
+#
+# returns true or false.
+#
+# NOTE that the return value is backward from what you probably
+# expect. it returns true if the hostname is not found, and false if
+# the hostname is found. this is because of the logic of the 'grep'
+# command above.
+sub comparehost {
+  my ($line, $host) = @_;
+  my %line = split_line($line);
+
+  return undef if (grep(/^$host$/, @{$line{'aliases'}}) || ($host eq $line{'host'}));
+  1; # not found
 }
 
 
@@ -96,7 +140,7 @@ sub compare_known_hosts {
 # args:
 # - line from ssh-keyscan
 # - hostname that was scanned
-# - array of lines from known_hosts
+# - array of lines from knownhosts
 #
 # returns
 # - int index to the match, or -1 if no match found
@@ -132,7 +176,7 @@ sub split_line {
 
   my @i = split /\ +/msx, $line;
   my @k = split /,/msx, $i[0];
-  my @aliases = @k[1, -1];
+  my @aliases = @k[1 .. $#k];
   return (host => $k[0], aliases => \@aliases, type => $i[1], key => $i[2]);
 }
 
@@ -154,6 +198,23 @@ sub unsplit_line {
 }
 
 
+# write an array of lines to the knownhosts file
+#
+# args:
+# - the filename
+# - an array of strings
+#
+# returns nothing
+sub write_knownhosts_file {
+  my $file = shift;
+  my @lines = @_;
+
+  open my $hdle, '>', $file or croak "cant open $file for writing: $ERRNO";
+  print {$hdle} @lines or croak "cant print to $file: $ERRNO";
+  close $hdle or croak "can't close $file: $ERRNO";
+}
+
+
 ### start
 
 my $file = '/etc/ssh/ssh_known_hosts';
@@ -162,7 +223,7 @@ my $scanout = '';
 my $scanopts = '';
 my $removehost = 0;
 my $usage = <<'TEXT';
-usage: knownhosts.pl [-h] [-f FILE] [-S SCANFILE] [-o OPTS] [-c COMMAND]
+usage: knownhosts.py [-h] [-f FILE] [-S SCANFILE] [-o OPTS] [-c COMMAND] [-r]
                      host [aliases [aliases ...]]
 
 A command to maintain the ssh_known_hosts file.
@@ -183,12 +244,12 @@ optional arguments:
   -c COMMAND, --command COMMAND
                         use this command to scan for keys. default: ssh-
                         keyscan
-  -r REMOVE, --remove REMOVE
-                        remove all entries of this host from the
-                        ssh_known_hosts file. Not implemented yet
+  -r, --remove          remove all entries/keytypes of this host from the
+                        ssh_known_hosts file. if remove is selected, only the
+                        first hostname is processed. other args are ignored.
 
-Examples of useful options to pass to the ssh-keyscan program are: port number
-and encryption type
+Examples of useful options (--opts) to pass to the ssh-keyscan program are:
+port number and encryption type
 TEXT
 
 my $help = 0;
@@ -213,7 +274,11 @@ if (! -f $file) {
   close $handle or croak "Error closing $file: $ERRNO";
 }
 
-my @newkeys = scan_keys($host, $scanout, $scancmd, $scanopts);
-compare_known_hosts($host, $file, \@aliases, \@newkeys);
+if ($removehost) {
+  remove_host($host, $file);
+} else {
+  my @newkeys = scan_keys($host, $scanout, $scancmd, $scanopts);
+  compare_known_hosts($host, $file, \@aliases, \@newkeys);
+}
 
 ### end
