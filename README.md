@@ -84,8 +84,6 @@ These items should be done, in no particular order:
 
 - Being relatively new to the Python language, I am not sure how to structure scripts for maximum portability. Especially the first line of the script is not very standard, and must be customised for different installations. Any hints or pointers on this would be greatly appreciated.
 
-- At the moment, the scripts will add or replace keys in the ssh_known_hosts file. The functionality to remove keys is not yet complete.
-
 - The tests section of the Makefile contains a lot of similar statements. Remove some repetition from there.
 
-- Ports to other languages. Maybe even a Posix shell version, though it may be reduced in functionality.
+- Possibly a port to a Posix shell version, though it may be reduced in functionality.
