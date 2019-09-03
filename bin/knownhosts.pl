@@ -34,7 +34,7 @@ sub scan_keys {
 
   if ($scanout eq '') {
     # run keyscan
-    qx($scancmd $scanopts $host 2>/dev/null);
+    return qx($scancmd $scanopts $host 2>/dev/null);
   } else {
     # testing mode. read the supplied filename and return an array
     open my $handle, '<', $scanout or croak "cant open file $scanout: $ERRNO";
@@ -109,6 +109,7 @@ sub remove_host {
   if ($#new != $#lines) {
     write_knownhosts_file($file, @new);
   }
+  return;
 }
 
 
@@ -129,8 +130,9 @@ sub comparehost {
   my ($line, $host) = @_;
   my %line = split_line($line);
 
-  return undef if (grep(/^$host$/, @{$line{'aliases'}}) || ($host eq $line{'host'}));
-  1; # not found
+  return 0 if (grep { /^$host$/ } @{$line{'aliases'}}) || ($host eq $line{'host'});
+  # return undef if (grep(/^$host$/, @{$line{'aliases'}}) || ($host eq $line{'host'}));
+  return 1; # not found
 }
 
 
@@ -206,12 +208,13 @@ sub unsplit_line {
 #
 # returns nothing
 sub write_knownhosts_file {
-  my $file = shift;
-  my @lines = @_;
+  my ($file, @lines) = @_;
 
+  print "writing to $file\n";
   open my $hdle, '>', $file or croak "cant open $file for writing: $ERRNO";
   print {$hdle} @lines or croak "cant print to $file: $ERRNO";
   close $hdle or croak "can't close $file: $ERRNO";
+  return;
 }
 
 
@@ -223,7 +226,7 @@ my $scanout = '';
 my $scanopts = '';
 my $removehost = 0;
 my $usage = <<'TEXT';
-usage: knownhosts.py [-h] [-f FILE] [-S SCANFILE] [-o OPTS] [-c COMMAND] [-r]
+usage: knownhosts.pl [-h] [-f FILE] [-S SCANFILE] [-o OPTS] [-c COMMAND] [-r]
                      host [aliases [aliases ...]]
 
 A command to maintain the ssh_known_hosts file.
