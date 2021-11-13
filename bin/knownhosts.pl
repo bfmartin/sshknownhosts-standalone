@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# -*- coding: utf-8 -*-
 
 # knownhosts.pl
 #
@@ -10,16 +9,18 @@
 # Byron F. Martin <https://www.bfmartin.ca/contact/>
 #
 # tested on:
-# - perl 5.22.1 on Linux Mint 18.1, 18.2
-# - perl 5.24.1 on OpenBSD 6.1
-# - perl 5.22.4 on Cygwin
+# - perl 5.30 on Linux Mint 20.2 (and previous versions)
+# - perl 5.32 on OpenBSD 7.0 (and previous versions)
 
+use 5.004;
 use strict;
 use warnings;
+use autodie;
 use Carp;
 use English qw(-no_match_vars);
 use Getopt::Long;
-use utf8;
+use utf8;                            # Source code is UTF-8
+use open ':std', ':encoding(UTF-8)'; # STDIN,STDOUT,STDERR are UTF-8.
 
 # args:
 # - hostname to scan
@@ -71,7 +72,7 @@ sub compare_known_hosts {
 
       # skip if key matches and aliases match
       next if $pkey{'key'} eq $pline{'key'} and
-          $pkey{'aliases'} == $pline{'aliases'};
+	  join("-", sort @{$pline{'aliases'}}) eq join("-", sort @aliases);
 
       splice @lines, $idx, 1; # remove old line
       push @lines, unsplit_line($key, $host, @aliases);
