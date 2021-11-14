@@ -116,3 +116,8 @@ t13:
 	cp tests/13/testknownhosts-start tmp/testknownhosts
 	(cd tmp && ./knownhosts $(OPTS) -r nonexistanthostname)
 	diff tmp/testknownhosts tests/13/testknownhosts-result
+
+# pylint -s no = disable score
+style:
+	-@perlcritic -4 -q bin/knownhosts.pl
+	-@pylint -s no bin/knownhosts.py
