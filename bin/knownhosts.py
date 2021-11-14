@@ -1,6 +1,6 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/python3
 
+"""add and remove entries from an ssh known hosts file."""
 # knownhosts.py
 #
 # maintain the /etc/ssh/ssh_known_hosts file by scanning hosts for
@@ -10,17 +10,13 @@
 # Byron F. Martin <https://www.bfmartin.ca/contact/>
 #
 # tested on:
-# - python 2.7 on Linux Mint 18.1, 18.2
-# - python 2.7 on OpenBSD 6.1
-# - python 3.6 on OpenBSD 6.1
-# - python 2.7.13 on Cygwin
+# - python 3.8.10 on Linux Mint 20.2 (and previous versions)
+# - python 3.8.0 on OpenBSD 7.0 (and previous versions)
 
 import argparse
 import os
 import re
 import subprocess
-import sys
-
 
 # args:
 # - hostname to scan
@@ -31,23 +27,27 @@ import sys
 # returns:
 # - a list of strings
 def scan_keys(host, scanfile, scanprog, opts):
+    """run scanprog (with opts) against host and return the results.
+
+    optionally, if scanfile is supplied, return the contents of that file
+    (useful for testing)."""
     if scanfile is None:
         # prepare to run keyscan
-        args = [scanprog]
+        scanargs = [scanprog]
         if not opts is None:
-            args.extend(re.split(r"\s+", opts))
+            scanargs.extend(re.split(r"\s+", opts))
 
-        args.append(host)
+        scanargs.append(host)
         # send stderr to /dev/null. does this work everywhere?
         devnull = open('/dev/null', 'w')
-        output = subprocess.check_output(args, stderr=devnull)
-        return(re.split(r"\n", output.decode("utf-8"))[0:-1])
-    else:
-        # testing mode. read the supplied filenames and return the list
-        with open(scanfile) as f:
-            lines = f.read().splitlines()
-            f.close()
-            return lines
+        output = subprocess.check_output(scanargs, stderr=devnull)
+        return re.split(r"\n", output.decode("utf-8"))[0:-1]
+
+    # testing mode. read the supplied filenames and return the list
+    with open(scanfile) as fhandle:
+        lines = fhandle.read().splitlines()
+        fhandle.close()
+        return lines
 
 
 # args
@@ -58,14 +58,15 @@ def scan_keys(host, scanfile, scanprog, opts):
 #
 # returns nothing
 def compare_known_hosts(host, file, aliases, scankeys):
-    with open(file) as f:
-        lines = f.read().splitlines()
-        f.close()
+    """compare the keys from the scan against keys from the known_hosts file."""
+    with open(file) as fhandle:
+        lines = fhandle.read().splitlines()
+        fhandle.close()
     changed = 0
 
     for key in scankeys:
         pkey = split_line(key)
-        idx = match_host_type(key, host, lines)
+        idx = match_host_type(key, lines)
         if idx > -1:
             pline = split_line(lines[idx])
             if pkey['key'] == pline['key'] and \
@@ -96,12 +97,13 @@ def compare_known_hosts(host, file, aliases, scankeys):
 #
 # returns nothing
 def remove_host(host, file):
-    with open(file) as f:
-        lines = f.read().splitlines()
-        f.close()
+    """remove all host key lines matching a hostname or alias."""
+    with open(file) as fhandle:
+        lines = fhandle.read().splitlines()
+        fhandle.close()
 
     newlines = [line for line in lines if comparehost(line, host)]
-    if (len(lines) == len(newlines)):
+    if len(lines) == len(newlines):
         return
 
     write_knownhosts_file(file, newlines)
@@ -121,11 +123,11 @@ def remove_host(host, file):
 # the hostname is found. this is because of the logic of the 'for'
 # command above.
 def comparehost(line, host):
+    """return false if a hostname matches hostname or aliases."""
     pline = split_line(line)
     if pline['host'] == host or host in pline['aliases']:
         return False
-    else:
-        return True
+    return True
 
 
 # looks for hostname and encryption type and matches against
@@ -133,16 +135,16 @@ def comparehost(line, host):
 #
 # args:
 # - line from ssh-keyscan
-# - hostname that was scanned
 # - list of lines from knownhosts
 #
 # returns
 # - int index to the match, or -1 if no match found
-def match_host_type(scanline, host, newkeys):
+def match_host_type(scanline, thesekeys):
+    """return the line number of a matching hostname and keytype in a list."""
     pscn = split_line(scanline)
 
     idx = -1
-    for key in newkeys:
+    for key in thesekeys:
         idx += 1
         pkey = split_line(key)
         if pscn['type'] == pkey['type'] and pscn['host'] == pkey['host']:
@@ -163,6 +165,7 @@ def match_host_type(scanline, host, newkeys):
 # returns:
 # - hash containing parsed line
 def split_line(line):
+    """split a knownhosts output line into component pieces."""
     i = re.split(r"\s+", line)
     k = re.split(r",", i[0])
     aliases = k[1:]
@@ -179,6 +182,7 @@ def split_line(line):
 # returns
 # - the line to enter into the ssh_known_hosts file
 def unsplit_line(line, host, aliases):
+    """combine a hash into a knownhosts output line."""
     pline = split_line(line)
     return " ".join([",".join([host] + aliases)] +
                     [pline['type']] + [pline['key']])
@@ -192,50 +196,51 @@ def unsplit_line(line, host, aliases):
 #
 # returns nothing
 def write_knownhosts_file(file, lines):
-    f = open(file, 'w')
-    f.writelines("%s\n" % line for line in lines)
-    f.close
+    """write an array of knwonhosts lines to a knownhosts file."""
+    print("writing to " + file)
+    with open(file, 'w') as fhandle:
+        fhandle.writelines("%s\n" % line for line in lines)
 
 
 # start here
 
-parser = argparse.ArgumentParser(
-  description='A command to maintain the ssh_known_hosts file.',
-  epilog='Examples of useful options (--opts) to pass to the ssh-keyscan '
-         'program are: port number and encryption type')
+PARSER = argparse.ArgumentParser(
+    description='A command to maintain the ssh_known_hosts file.',
+    epilog='Examples of useful options (--opts) to pass to the ssh-keyscan '
+           'program are: port number and encryption type')
 
-parser.add_argument('-f', '--file', type=str,
+PARSER.add_argument('-f', '--file', type=str,
                     default='/etc/ssh/ssh_known_hosts',
                     help='the ssh_known_hosts file to edit. default: '
                     '%(default)s')
-parser.add_argument('-S', '--SCANFILE', type=str,
+PARSER.add_argument('-S', '--SCANFILE', type=str,
                     help='instead of scanning the host with ssh-keyscan, use '
                     'the contents of this file. useful for testing.')
-parser.add_argument('-o', '--opts', type=str,
+PARSER.add_argument('-o', '--opts', type=str,
                     help='supply this string as options to the ssh-keyscan '
                     'program')
-parser.add_argument('-c', '--command', default='ssh-keyscan',
+PARSER.add_argument('-c', '--command', default='ssh-keyscan',
                     help='use this command to scan for keys. default: '
                     '%(default)s')
-parser.add_argument('-r', '--remove', action="store_true", help='remove all '
+PARSER.add_argument('-r', '--remove', action="store_true", help='remove all '
                     'entries/keytypes of this host from the ssh_known_hosts file.'
                     ' if remove is selected, only the first hostname is processed.'
                     ' other args are ignored.')
 
-parser.add_argument('host', type=str, help='the hostname to scan')
-parser.add_argument('aliases', nargs='*', default=[], help='aliases for host')
+PARSER.add_argument('host', type=str, help='the hostname to scan')
+PARSER.add_argument('aliases', nargs='*', default=[], help='aliases for host')
 
-args = parser.parse_args()
+ARGS = PARSER.parse_args()
 
 # create file if it doesn't exist
-if not os.path.exists(args.file):
-    with open(args.file, 'a'):
-        os.utime(args.file, None)
+if not os.path.exists(ARGS.file):
+    with open(ARGS.file, 'a'):
+        os.utime(ARGS.file, None)
 
-if args.remove:
-    remove_host(args.host, args.file)
+if ARGS.remove:
+    remove_host(ARGS.host, ARGS.file)
 else:
-    newkeys = scan_keys(args.host, args.SCANFILE, args.command, args.opts)
-    compare_known_hosts(args.host, args.file, args.aliases, newkeys)
+    NEWKEYS = scan_keys(ARGS.host, ARGS.SCANFILE, ARGS.command, ARGS.opts)
+    compare_known_hosts(ARGS.host, ARGS.file, ARGS.aliases, NEWKEYS)
 
 # end
