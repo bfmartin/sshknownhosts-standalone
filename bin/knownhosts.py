@@ -197,7 +197,8 @@ def unsplit_line(line, host, aliases):
 # returns nothing
 def write_knownhosts_file(file, lines):
     """write an array of knwonhosts lines to a knownhosts file."""
-    print("writing to " + file)
+    if not ARGS.quiet:
+        print("writing to " + file)
     with open(file, 'w') as fhandle:
         fhandle.writelines("%s\n" % line for line in lines)
 
@@ -226,6 +227,7 @@ PARSER.add_argument('-r', '--remove', action="store_true", help='remove all '
                     'entries/keytypes of this host from the ssh_known_hosts file.'
                     ' if remove is selected, only the first hostname is processed.'
                     ' other args are ignored.')
+PARSER.add_argument('-q', '--quiet', action='store_true', help='supress messages')
 
 PARSER.add_argument('host', type=str, help='the hostname to scan')
 PARSER.add_argument('aliases', nargs='*', default=[], help='aliases for host')

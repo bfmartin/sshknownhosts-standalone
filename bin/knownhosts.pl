@@ -54,7 +54,7 @@ sub scan_keys {
 #
 # returns nothing
 sub compare_known_hosts {
-  my ($host, $file, $aliases, $scankeys) = @_;
+  my ($host, $file, $aliases, $scankeys, $quiet) = @_;
   my @aliases = @{$aliases};
   my @scankeys = @{$scankeys};
 
@@ -84,7 +84,7 @@ sub compare_known_hosts {
   }
 
   return if $changed == 0;
-  write_knownhosts_file($file, @lines);
+  write_knownhosts_file($file, $quiet, @lines);
   return 0;
 }
 
@@ -99,7 +99,7 @@ sub compare_known_hosts {
 #
 # returns nothing
 sub remove_host {
-  my ($host, $file) = @_;
+  my ($host, $file, $quiet) = @_;
 
   open my $handle, '<', $file or croak "cant open knownhosts file $file: $ERRNO";
   my @lines = <$handle>;
@@ -108,7 +108,7 @@ sub remove_host {
   my @new = grep { comparehost($_, $host) } @lines;
 
   if ($#new != $#lines) {
-    write_knownhosts_file($file, @new);
+    write_knownhosts_file($file, $quiet, @new);
   }
   return;
 }
@@ -209,9 +209,9 @@ sub unsplit_line {
 #
 # returns nothing
 sub write_knownhosts_file {
-  my ($file, @lines) = @_;
+  my ($file, $quiet, @lines) = @_;
 
-  print "writing to $file\n";
+  print "writing to $file\n" unless $quiet;
   open my $hdle, '>', $file or croak "cant open $file for writing: $ERRNO";
   print {$hdle} @lines or croak "cant print to $file: $ERRNO";
   close $hdle or croak "can't close $file: $ERRNO";
@@ -226,6 +226,7 @@ my $scancmd = 'ssh-keyscan';
 my $scanout = '';
 my $scanopts = '';
 my $removehost = 0;
+my $quiet = 0;
 my $usage = <<'TEXT';
 usage: knownhosts.pl [-h] [-f FILE] [-S SCANFILE] [-o OPTS] [-c COMMAND] [-r]
                      host [aliases [aliases ...]]
@@ -251,6 +252,7 @@ optional arguments:
   -r, --remove          remove all entries/keytypes of this host from the
                         ssh_known_hosts file. if remove is selected, only the
                         first hostname is processed. other args are ignored.
+  -q, --quiet           supress messages
 
 Examples of useful options (--opts) to pass to the ssh-keyscan program are:
 port number and encryption type
@@ -262,7 +264,8 @@ GetOptions('help|?' => \$help,
            'SCANFILE=s' => \$scanout,
            'opts=s' => \$scanopts,
            'command=s' => \$scancmd,
-           'remove' => \$removehost
+           'remove' => \$removehost,
+           'quiet' => \$quiet
     ) or croak $usage;
 
 croak $usage if $help;
@@ -279,10 +282,10 @@ if (! -f $file) {
 }
 
 if ($removehost) {
-  remove_host($host, $file);
+  remove_host($host, $file, $quiet);
 } else {
   my @newkeys = scan_keys($host, $scanout, $scancmd, $scanopts);
-  compare_known_hosts($host, $file, \@aliases, \@newkeys);
+  compare_known_hosts($host, $file, \@aliases, \@newkeys, $quiet);
 }
 
 ### end
