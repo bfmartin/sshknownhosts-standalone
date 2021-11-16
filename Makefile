@@ -15,109 +15,56 @@
 #  11 remove a host given the hostname
 #  12 remove a host given an alias
 #  13 remove a non-existant host, so nothing is added/removed
-#
-# not done yet:
-#  - remove host
-#  - remove host and aliases
 
-# these options are always used when running knownhosts.p[ly] in the tests
-OPTS=-f testknownhosts -S testscan.txt
+TMPFILE = /tmp/knownhostsstandalone
+.PHONY: test testsuite testrun style count
 
-# start here
-all: testperl testpython
+# run the set of tests for perl and python commands
+# remove the -s to see trace messages
+test:
+	@make -s CMD=${PWD}/bin/knownhosts.pl testsuite
+	@make -s CMD=${PWD}/bin/knownhosts.py testsuite
+	@rm -f ${TMPFILE}
 
-testpython:
-	@mkdir -p tmp
-	@cp bin/knownhosts.py tmp/knownhosts
-	make runall
+# run the set of tests for this command
+testsuite:
+	make TESTNUM=1  CMDARGS="hostnameabc"                      testrun
+	make TESTNUM=2  CMDARGS="hostnameabc alias"                testrun
+	make TESTNUM=3  CMDARGS="hostname123"                      testrun
+	make TESTNUM=4  CMDARGS="hostname123 alias"                testrun
+	make TESTNUM=5  CMDARGS="hostname123 alias"                testrun
+	make TESTNUM=6  CMDARGS="hostname123 alias"                testrun
+	make TESTNUM=7  CMDARGS="hostname123"                      testrun
+	make TESTNUM=8  CMDARGS="hostname123"                      testrun
+	make TESTNUM=9  CMDARGS="hostname123 aliasa aliasb aliasc" testrun
+	make TESTNUM=10 CMDARGS="hostname123 aliasa aliasb aliasc" testrun
+	make TESTNUM=11 CMDARGS="-r hostname123"                   testrun
+	make TESTNUM=12 CMDARGS="-r alias1"                        testrun
+	make TESTNUM=13 CMDARGS="-r nonexistanthostname"           testrun
 
-testperl:
-	@mkdir -p tmp
-	@cp bin/knownhosts.pl tmp/knownhosts
-	make runall
+# run an individual test.
+# requires env vars:
+#  - CMD       command to run (either bin/knownhosts.pl or bin/knownhosts.py)
+#  - CMDARGS   extra command line options and args for knownhosts command for this test
+#  - TESTNUM   test number to use (path in test/)
+#  - TMPFILE   knownhostsfile to use. must be writable
+#  - PWD       full path to directory containing Makefile (make defines this)
+testrun:
+	cp tests/${TESTNUM}/testknownhosts-start ${TMPFILE}
+	${CMD} -q -f ${TMPFILE} -S ${PWD}/tests/${TESTNUM}/testscan-start.txt ${CMDARGS}
+	diff ${TMPFILE} tests/${TESTNUM}/testknownhosts-result
 
-runall: t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13
-	@rm -rf tmp
-
-t1:
-	cp tests/1/testscan-start.txt tmp/testscan.txt
-	cp tests/1/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) hostnameabc)
-	diff tmp/testknownhosts tests/1/testknownhosts-result
-
-t2:
-	cp tests/2/testscan-start.txt tmp/testscan.txt
-	cp tests/2/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) hostnameabc alias)
-	diff tmp/testknownhosts tests/2/testknownhosts-result
-
-t3:
-	cp tests/3/testscan-start.txt tmp/testscan.txt
-	cp tests/3/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) hostname123)
-	diff tmp/testknownhosts tests/3/testknownhosts-result
-
-t4:
-	cp tests/4/testscan-start.txt tmp/testscan.txt
-	cp tests/4/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) hostname123 alias)
-	diff tmp/testknownhosts tests/4/testknownhosts-result
-
-t5:
-	cp tests/5/testscan-start.txt tmp/testscan.txt
-	cp tests/5/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) hostname123 alias)
-	diff tmp/testknownhosts tests/5/testknownhosts-result
-
-t6:
-	cp tests/6/testscan-start.txt tmp/testscan.txt
-	cp tests/6/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) hostname123 alias)
-	diff tmp/testknownhosts tests/6/testknownhosts-result
-
-t7:
-	cp tests/7/testscan-start.txt tmp/testscan.txt
-	cp tests/7/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) hostname123)
-	diff tmp/testknownhosts tests/7/testknownhosts-result
-
-t8:
-	cp tests/8/testscan-start.txt tmp/testscan.txt
-	cp tests/8/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) hostname123)
-	diff tmp/testknownhosts tests/8/testknownhosts-result
-
-t9:
-	cp tests/9/testscan-start.txt tmp/testscan.txt
-	cp tests/9/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) hostname123 aliasa aliasb aliasc)
-	diff tmp/testknownhosts tests/9/testknownhosts-result
-
-t10:
-	cp tests/10/testscan-start.txt tmp/testscan.txt
-	cp tests/10/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) hostname123 aliasa aliasb aliasc)
-	diff tmp/testknownhosts tests/10/testknownhosts-result
-
-t11:
-	cp tests/11/testscan-start.txt tmp/testscan.txt
-	cp tests/11/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) -r hostname123)
-	diff tmp/testknownhosts tests/11/testknownhosts-result
-
-t12:
-	cp tests/12/testscan-start.txt tmp/testscan.txt
-	cp tests/12/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) -r alias1)
-	diff tmp/testknownhosts tests/12/testknownhosts-result
-
-t13:
-	cp tests/13/testscan-start.txt tmp/testscan.txt
-	cp tests/13/testknownhosts-start tmp/testknownhosts
-	(cd tmp && ./knownhosts $(OPTS) -r nonexistanthostname)
-	diff tmp/testknownhosts tests/13/testknownhosts-result
-
-# pylint -s no = disable score
+# "pylint -s no" = disable score
 style:
 	-@perlcritic -4 -q bin/knownhosts.pl
 	-@pylint -s no bin/knownhosts.py
+# perlcritic version 1.138
+# pylint version 2.4.4
+
+# housekeeping task to count lines of code
+# outputs: date, linecount, filecount, avg-lines-per-file
+count:
+	@FCOUNT=$$(ls bin/knownhosts.* Makefile | wc -l) && \
+		LCOUNT=$$(cat bin/knownhosts.* Makefile | sed "s/#.*//" | awk NF | wc -l) && \
+		AVG=$$(echo "scale=1;$$LCOUNT/$$FCOUNT" | bc -l) && \
+		echo $$(date +%Y-%m-%d), "$$LCOUNT", "$$FCOUNT", "$$AVG"
