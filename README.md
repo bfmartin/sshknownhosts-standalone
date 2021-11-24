@@ -84,6 +84,4 @@ These items should be done, in no particular order:
 
 - Being relatively new to the Python language, I am not sure how to structure scripts for maximum portability. Especially the first line of the script is not very standard, and must be customised for different installations. Any hints or pointers on this would be greatly appreciated.
 
-- The tests section of the Makefile contains a lot of similar statements. Remove some repetition from there.
-
 - Possibly a port to a Posix shell version, though it may be reduced in functionality.
