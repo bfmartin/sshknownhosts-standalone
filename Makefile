@@ -22,25 +22,25 @@ TMPFILE = /tmp/knownhostsstandalone
 # run the set of tests for perl and python commands
 # remove the -s to see trace messages
 test:
-	@make -s CMD=${PWD}/bin/knownhosts.pl testsuite
-	@make -s CMD=${PWD}/bin/knownhosts.py testsuite
+	@make -s CMD=${PWD}/bin/knownhosts.pl _testsuite
+	@make -s CMD=${PWD}/bin/knownhosts.py _testsuite
 	@rm -f ${TMPFILE}
 
 # run the set of tests for this command
-testsuite:
-	make TESTNUM=1  CMDARGS="hostnameabc"                      testrun
-	make TESTNUM=2  CMDARGS="hostnameabc alias"                testrun
-	make TESTNUM=3  CMDARGS="hostname123"                      testrun
-	make TESTNUM=4  CMDARGS="hostname123 alias"                testrun
-	make TESTNUM=5  CMDARGS="hostname123 alias"                testrun
-	make TESTNUM=6  CMDARGS="hostname123 alias"                testrun
-	make TESTNUM=7  CMDARGS="hostname123"                      testrun
-	make TESTNUM=8  CMDARGS="hostname123"                      testrun
-	make TESTNUM=9  CMDARGS="hostname123 aliasa aliasb aliasc" testrun
-	make TESTNUM=10 CMDARGS="hostname123 aliasa aliasb aliasc" testrun
-	make TESTNUM=11 CMDARGS="-r hostname123"                   testrun
-	make TESTNUM=12 CMDARGS="-r alias1"                        testrun
-	make TESTNUM=13 CMDARGS="-r nonexistanthostname"           testrun
+_testsuite:
+	make TESTNUM=1  CMDARGS="hostnameabc"                      _testrun
+	make TESTNUM=2  CMDARGS="hostnameabc alias"                _testrun
+	make TESTNUM=3  CMDARGS="hostname123"                      _testrun
+	make TESTNUM=4  CMDARGS="hostname123 alias"                _testrun
+	make TESTNUM=5  CMDARGS="hostname123 alias"                _testrun
+	make TESTNUM=6  CMDARGS="hostname123 alias"                _testrun
+	make TESTNUM=7  CMDARGS="hostname123"                      _testrun
+	make TESTNUM=8  CMDARGS="hostname123"                      _testrun
+	make TESTNUM=9  CMDARGS="hostname123 aliasa aliasb aliasc" _testrun
+	make TESTNUM=10 CMDARGS="hostname123 aliasa aliasb aliasc" _testrun
+	make TESTNUM=11 CMDARGS="-r hostname123"                   _testrun
+	make TESTNUM=12 CMDARGS="-r alias1"                        _testrun
+	make TESTNUM=13 CMDARGS="-r nonexistanthostname"           _testrun
 
 # run an individual test.
 # requires env vars:
@@ -49,22 +49,13 @@ testsuite:
 #  - TESTNUM   test number to use (path in test/)
 #  - TMPFILE   knownhostsfile to use. must be writable
 #  - PWD       full path to directory containing Makefile (make defines this)
-testrun:
+_testrun:
 	cp tests/${TESTNUM}/testknownhosts-start ${TMPFILE}
 	${CMD} -q -f ${TMPFILE} -S ${PWD}/tests/${TESTNUM}/testscan-start.txt ${CMDARGS}
 	diff ${TMPFILE} tests/${TESTNUM}/testknownhosts-result
 
-# "pylint -s no" = disable score
-style:
-	-@perlcritic -4 -q bin/knownhosts.pl
-	-@pylint -s no bin/knownhosts.py
-# perlcritic version 1.138
-# pylint version 2.4.4
-
-# housekeeping task to count lines of code
-# outputs: date, linecount, filecount, avg-lines-per-file
-count:
-	@FCOUNT=$$(ls bin/knownhosts.* Makefile | wc -l) && \
-		LCOUNT=$$(cat bin/knownhosts.* Makefile | sed "s/#.*//" | awk NF | wc -l) && \
-		AVG=$$(echo "scale=1;$$LCOUNT/$$FCOUNT" | bc -l) && \
-		echo $$(date +%Y-%m-%d), "$$LCOUNT", "$$FCOUNT", "$$AVG"
+# housekeeping tasks. only of interest to the author
+PLX = bin/*.pl
+PYX = bin/*.py
+XTRAC = Makefile
+sinclude ~/bin/lib/Makefile-global
